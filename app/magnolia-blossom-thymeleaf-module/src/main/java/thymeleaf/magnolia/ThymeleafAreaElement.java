@@ -11,21 +11,20 @@ import info.magnolia.rendering.engine.RenderingEngine;
 import info.magnolia.rendering.template.AreaDefinition;
 import info.magnolia.templating.elements.AreaElement;
 import info.magnolia.templating.inheritance.DefaultInheritanceContentDecorator;
-import org.thymeleaf.exceptions.TemplateProcessingException;
 
-import javax.jcr.Node;
-import javax.jcr.RepositoryException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.jcr.Node;
+import javax.jcr.RepositoryException;
+
+import org.thymeleaf.exceptions.TemplateProcessingException;
+
 /**
- * Created with IntelliJ IDEA.
- * User: Thomas
- * Date: 11.11.12
- * Time: 16:11
- * To change this template use File | Settings | File Templates.
+ * Created with IntelliJ IDEA. User: Thomas Date: 11.11.12 Time: 16:11 To change this template use File | Settings |
+ * File Templates.
  */
 public class ThymeleafAreaElement extends AreaElement {
 
@@ -34,16 +33,17 @@ public class ThymeleafAreaElement extends AreaElement {
     private String type;
     private Object areaPath2;
 
-    public ThymeleafAreaElement(ServerConfiguration server, RenderingContext renderingContext, RenderingEngine renderingEngine) {
+    public ThymeleafAreaElement(final ServerConfiguration server, final RenderingContext renderingContext,
+            final RenderingEngine renderingEngine) {
         super(server, renderingContext, renderingEngine);
     }
 
     private String resolveType() {
-        return type != null ? type : areaDefinition != null && areaDefinition.getType() != null ? areaDefinition.getType() : AreaDefinition.DEFAULT_TYPE;
+        return type != null ? type : areaDefinition != null && areaDefinition.getType() != null ? areaDefinition
+                .getType() : AreaDefinition.DEFAULT_TYPE;
     }
 
     public Map<String, Object> getContextMap() {
-
 
         try {
             this.areaNode = getPassedContent();
@@ -52,7 +52,7 @@ public class ThymeleafAreaElement extends AreaElement {
             } else {
                 // will be null if no area has been created (for instance for optional areas)
                 // current content is the parent node
-                Node parentNode = currentContent();
+                final Node parentNode = currentContent();
                 this.areaNode = tryToCreateAreaNode(parentNode);
                 this.areaPath2 = getNodePath(parentNode) + "/" + getName();
             }
@@ -61,23 +61,25 @@ public class ThymeleafAreaElement extends AreaElement {
 
             if (isInherit() && areaNode != null) {
                 try {
-                    areaNode = new DefaultInheritanceContentDecorator(areaNode, areaDefinition.getInheritance()).wrapNode(areaNode);
-                } catch (RepositoryException e) {
+                    areaNode = new DefaultInheritanceContentDecorator(areaNode, areaDefinition.getInheritance())
+                            .wrapNode(areaNode);
+                } catch (final RepositoryException e) {
                     throw new RuntimeRepositoryException(e);
                 }
             }
-            Map<String, Object> contextObjects = new HashMap<String, Object>();
+            final Map<String, Object> contextObjects = new HashMap<>();
 
-            List<ContentMap> components = new ArrayList<ContentMap>();
+            final List<ContentMap> components = new ArrayList<>();
 
             if (areaNode != null) {
-                for (Node node : NodeUtil.getNodes(areaNode, MgnlNodeType.NT_COMPONENT)) {
+                for (final Node node : NodeUtil.getNodes(areaNode, MgnlNodeType.NT_COMPONENT)) {
                     components.add(new ContentMap(node));
                 }
             }
             if (AreaDefinition.TYPE_SINGLE.equals(type)) {
                 if (components.size() > 1) {
-                    throw new RenderException("Can't render single area [" + areaNode + "]: expected one component node but found more.");
+                    throw new RenderException("Can't render single area [" + areaNode
+                            + "]: expected one component node but found more.");
                 }
                 if (components.size() == 1) {
                     contextObjects.put(ATTRIBUTE_COMPONENT, components.get(0));
@@ -88,7 +90,7 @@ public class ThymeleafAreaElement extends AreaElement {
                 contextObjects.put(ATTRIBUTE_COMPONENTS, components);
             }
             return contextObjects;
-        } catch (Exception x) {
+        } catch (final Exception x) {
             throw new TemplateProcessingException("Createing context map", x);
         }
     }

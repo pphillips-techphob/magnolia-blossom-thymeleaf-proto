@@ -9,31 +9,33 @@ import info.magnolia.module.blossom.dispatcher.BlossomDispatcher;
 import info.magnolia.module.blossom.dispatcher.BlossomDispatcherAware;
 import info.magnolia.module.blossom.dispatcher.BlossomDispatcherInitializedEvent;
 import info.magnolia.module.blossom.support.AbstractUrlMappedHandlerPostProcessor;
-import info.magnolia.module.blossom.template.*;
+import info.magnolia.module.blossom.template.BlossomAreaDefinition;
+import info.magnolia.module.blossom.template.BlossomTemplateDefinition;
+import info.magnolia.module.blossom.template.BlossomTemplateDefinitionProvider;
+import info.magnolia.module.blossom.template.DetectedHandlersMetaData;
+import info.magnolia.module.blossom.template.HandlerMetaData;
+import info.magnolia.module.blossom.template.TemplateDefinitionBuilder;
 import info.magnolia.objectfactory.Components;
 import info.magnolia.rendering.template.AreaDefinition;
 import info.magnolia.rendering.template.registry.TemplateDefinitionRegistry;
 import info.magnolia.ui.dialog.registry.DialogDefinitionRegistry;
+
+import java.util.Collection;
+import java.util.List;
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 
-import javax.jcr.RepositoryException;
-import java.util.Collection;
-import java.util.List;
-
 /**
- * Created with IntelliJ IDEA.
- * User: tkratz
- * Date: 11.11.12
- * Time: 10:59
- * To change this template use File | Settings | File Templates.
+ * Created with IntelliJ IDEA. User: tkratz Date: 11.11.12 Time: 10:59 To change this template use File | Settings |
+ * File Templates.
  */
-public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProcessor implements InitializingBean, ApplicationListener, BlossomDispatcherAware {
+public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProcessor implements InitializingBean,
+        ApplicationListener<BlossomDispatcherInitializedEvent>, BlossomDispatcherAware {
 
     private static final String TEMPLATE_DIALOG_PREFIX = "blossom-template-dialog:";
     private static final String AREA_DIALOG_PREFIX = "blossom-area-dialog:";
@@ -44,25 +46,24 @@ public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProce
     private TemplateDefinitionBuilder templateDefinitionBuilder;
     private DialogDescriptionBuilder dialogDescriptionBuilder;
 
-    private DetectedHandlersMetaData detectedHandlers = new DetectedHandlersMetaData();
+    private final DetectedHandlersMetaData detectedHandlers = new DetectedHandlersMetaData();
 
-
-    public void setTemplateDefinitionBuilder(TemplateDefinitionBuilder templateDefinitionBuilder) {
+    public void setTemplateDefinitionBuilder(final TemplateDefinitionBuilder templateDefinitionBuilder) {
         this.templateDefinitionBuilder = templateDefinitionBuilder;
     }
 
-    public void setDialogDescriptionBuilder(DialogDescriptionBuilder dialogDescriptionBuilder) {
+    public void setDialogDescriptionBuilder(final DialogDescriptionBuilder dialogDescriptionBuilder) {
         this.dialogDescriptionBuilder = dialogDescriptionBuilder;
     }
 
-
-    public void setBlossomDispatcher(BlossomDispatcher dispatcher) {
+    @Override
+    public void setBlossomDispatcher(final BlossomDispatcher dispatcher) {
         this.dispatcher = dispatcher;
     }
 
     @Override
-    protected void postProcessHandler(Object handler, String handlerPath) {
-        Class<?> handlerClass = AopUtils.getTargetClass(handler);
+    protected void postProcessHandler(final Object handler, final String handlerPath) {
+        final Class<?> handlerClass = AopUtils.getTargetClass(handler);
         if (handlerClass.isAnnotationPresent(Area.class)) {
             detectedHandlers.addArea(new HandlerMetaData(handler, handlerPath, handlerClass));
         } else if (handlerClass.isAnnotationPresent(Template.class)) {
@@ -71,18 +72,20 @@ public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProce
     }
 
     @Override
-    public void onApplicationEvent(ApplicationEvent event) {
-        if (event instanceof BlossomDispatcherInitializedEvent && event.getSource() == dispatcher) {
+    public void onApplicationEvent(final BlossomDispatcherInitializedEvent event) {
+        if (event.getSource() == dispatcher) {
             exportTemplates();
         }
     }
 
     protected void exportTemplates() {
-        for (HandlerMetaData template : detectedHandlers.getTemplates()) {
+        for (final HandlerMetaData template : detectedHandlers.getTemplates()) {
 
-            BlossomTemplateDefinition definition = templateDefinitionBuilder.buildTemplateDefinition(dispatcher, detectedHandlers, template);
+            final BlossomTemplateDefinition definition = templateDefinitionBuilder.buildTemplateDefinition(dispatcher,
+                    detectedHandlers, template);
 
-            Components.getComponent(TemplateDefinitionRegistry.class).register(new BlossomTemplateDefinitionProvider(definition));
+            Components.getComponent(TemplateDefinitionRegistry.class).register(
+                    new BlossomTemplateDefinitionProvider(definition));
 
             if (StringUtils.isEmpty(definition.getDialog())) {
                 registerTemplateDialog(definition);
@@ -93,29 +96,33 @@ public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProce
             registerAreaDialogs(definition.getAreas().values());
         }
 
-
     }
 
-    protected void registerDialogFactories(BlossomTemplateDefinition templateDefinition) {
+    protected void registerDialogFactories(final BlossomTemplateDefinition templateDefinition) {
 
-        List<BlossomDialogDescription> dialogDescriptions = dialogDescriptionBuilder.buildDescriptions(templateDefinition.getHandler());
-        for (BlossomDialogDescription dialogDescription : dialogDescriptions) {
+        final List<BlossomDialogDescription> dialogDescriptions = dialogDescriptionBuilder
+                .buildDescriptions(templateDefinition.getHandler());
+        for (final BlossomDialogDescription dialogDescription : dialogDescriptions) {
 
-            Components.getComponent(DialogDefinitionRegistry.class).register(new BlossomDialogDefinitionProvider(dialogDescription));
+            Components.getComponent(DialogDefinitionRegistry.class).register(
+                    new BlossomDialogDefinitionProvider(dialogDescription));
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Registered dialog factory within template [" + templateDefinition.getId() + "] with id [" + dialogDescription.getId() + "]");
+                logger.debug("Registered dialog factory within template [" + templateDefinition.getId() + "] with id ["
+                        + dialogDescription.getId() + "]");
             }
         }
     }
 
-    protected void registerTemplateDialog(BlossomTemplateDefinition templateDefinition) {
+    protected void registerTemplateDialog(final BlossomTemplateDefinition templateDefinition) {
 
-        String templateId = templateDefinition.getId();
+        final String templateId = templateDefinition.getId();
 
-        String dialogId = TEMPLATE_DIALOG_PREFIX + AopUtils.getTargetClass(templateDefinition.getHandler()).getName();
+        final String dialogId = TEMPLATE_DIALOG_PREFIX
+                + AopUtils.getTargetClass(templateDefinition.getHandler()).getName();
 
-        BlossomDialogDescription dialogDescription = dialogDescriptionBuilder.buildDescription(dialogId, templateDefinition.getTitle(), templateDefinition.getHandler());
+        final BlossomDialogDescription dialogDescription = dialogDescriptionBuilder.buildDescription(dialogId,
+                templateDefinition.getTitle(), templateDefinition.getHandler());
 
         if (dialogDescription.getFactoryMetaData().isEmpty()) {
             return;
@@ -123,16 +130,16 @@ public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProce
 
         templateDefinition.setDialog(dialogId);
 
-        Components.getComponent(DialogDefinitionRegistry.class).register(new BlossomDialogDefinitionProvider(dialogDescription));
-
+        Components.getComponent(DialogDefinitionRegistry.class).register(
+                new BlossomDialogDefinitionProvider(dialogDescription));
 
         if (logger.isDebugEnabled()) {
             logger.debug("Registered dialog for template [" + templateId + "] with id [" + dialogId + "]");
         }
     }
 
-    protected void registerAreaDialogs(Collection<AreaDefinition> areas) {
-        for (AreaDefinition areaDefinition : areas) {
+    protected void registerAreaDialogs(final Collection<AreaDefinition> areas) {
+        for (final AreaDefinition areaDefinition : areas) {
             if (StringUtils.isEmpty(areaDefinition.getDialog())) {
                 registerAreaDialog((BlossomAreaDefinition) areaDefinition);
             }
@@ -140,13 +147,14 @@ public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProce
         }
     }
 
-    protected void registerAreaDialog(BlossomAreaDefinition areaDefinition) {
+    protected void registerAreaDialog(final BlossomAreaDefinition areaDefinition) {
 
-        String areaName = areaDefinition.getName();
+        final String areaName = areaDefinition.getName();
 
-        String dialogId = AREA_DIALOG_PREFIX + AopUtils.getTargetClass(areaDefinition.getHandler()).getName();
+        final String dialogId = AREA_DIALOG_PREFIX + AopUtils.getTargetClass(areaDefinition.getHandler()).getName();
 
-        BlossomDialogDescription dialogDescription = dialogDescriptionBuilder.buildDescription(dialogId, areaDefinition.getTitle(), areaDefinition.getHandler());
+        final BlossomDialogDescription dialogDescription = dialogDescriptionBuilder.buildDescription(dialogId,
+                areaDefinition.getTitle(), areaDefinition.getHandler());
 
         if (dialogDescription.getFactoryMetaData().isEmpty()) {
             return;
@@ -154,7 +162,8 @@ public class ThymeleafTemplateExporter extends AbstractUrlMappedHandlerPostProce
 
         areaDefinition.setDialog(dialogId);
 
-        Components.getComponent(DialogDefinitionRegistry.class).register(new BlossomDialogDefinitionProvider(dialogDescription));
+        Components.getComponent(DialogDefinitionRegistry.class).register(
+                new BlossomDialogDefinitionProvider(dialogDescription));
 
         if (logger.isDebugEnabled()) {
             logger.debug("Registered dialog for area [" + areaName + "] with id [" + dialogId + "]");

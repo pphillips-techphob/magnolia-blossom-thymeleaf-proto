@@ -13,67 +13,67 @@ import info.magnolia.rendering.template.TemplateDefinition;
 import info.magnolia.rendering.template.assignment.TemplateDefinitionAssignment;
 import info.magnolia.templating.elements.ComponentElement;
 import info.magnolia.templating.elements.MarkupHelper;
-import info.magnolia.templating.freemarker.AreaDirective;
+import info.magnolia.templating.freemarker.AbstractDirective;
+
+import java.io.StringWriter;
+
+import javax.jcr.Node;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 
-import javax.jcr.Node;
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
-import java.io.IOException;
-import java.io.StringWriter;
-
 /**
- * Created with IntelliJ IDEA.
- * User: Thomas
- * Date: 12.11.12
- * Time: 20:12
- * To change this template use File | Settings | File Templates.
+ * Created with IntelliJ IDEA. User: Thomas Date: 12.11.12 Time: 20:12 To change this template use File | Settings |
+ * File Templates.
  */
-public class ThymeleafComponentElement extends ComponentElement{
+public class ThymeleafComponentElement extends ComponentElement {
 
     private static final Logger log = LoggerFactory.getLogger(ThymeleafComponentElement.class);
     private Node content;
-    private TemplateDefinitionAssignment templateDefinitionAssignment2;
+    private final TemplateDefinitionAssignment templateDefinitionAssignment2;
     private TemplateDefinition componentDefinition2;
     private Boolean editable2;
     private String dialog2;
 
-    public ThymeleafComponentElement(ServerConfiguration server, RenderingContext renderingContext, RenderingEngine renderingEngine, TemplateDefinitionAssignment templateDefinitionAssignment) {
+    public ThymeleafComponentElement(final ServerConfiguration server, final RenderingContext renderingContext,
+            final RenderingEngine renderingEngine, final TemplateDefinitionAssignment templateDefinitionAssignment) {
         super(server, renderingContext, renderingEngine, templateDefinitionAssignment);
         this.templateDefinitionAssignment2 = templateDefinitionAssignment;
     }
 
-    public String createComment(){
+    public String createComment() {
 
-        StringWriter out = new StringWriter();
+        final StringWriter out = new StringWriter();
         try {
             content = getPassedContent();
 
-            if(content == null) {
-                throw new RenderException("The 'content' or 'workspace' and 'path' attribute have to be set to render a component.");
+            if (content == null) {
+                throw new RenderException(
+                        "The 'content' or 'workspace' and 'path' attribute have to be set to render a component.");
             }
 
-            if(isAdmin() && hasPermission(content)){
+            if (isAdmin() && hasPermission(content)) {
 
                 try {
                     this.componentDefinition2 = templateDefinitionAssignment2.getAssignedTemplateDefinition(content);
-                } catch (RegistrationException e) {
+                } catch (final RegistrationException e) {
                     throw new RenderException("No template definition found for the current content", e);
                 }
 
                 final Messages messages = MessagesManager.getMessages(componentDefinition2.getI18nBasename());
 
                 if (isRenderEditbar()) {
-                    MarkupHelper helper = new MarkupHelper(out);
+                    final MarkupHelper helper = new MarkupHelper(out);
 
                     out.write("cms:component");
 
-                    helper.attribute(AreaDirective.CONTENT_ATTRIBUTE, getNodePath(content));
+                    helper.attribute(AbstractDirective.CONTENT_ATTRIBUTE, getNodePath(content));
 
-                    if(content instanceof InheritanceNodeWrapper) {
+                    if (content instanceof InheritanceNodeWrapper) {
                         if (((InheritanceNodeWrapper) content).isInherited()) {
                             helper.attribute("inherited", "true");
                         }
@@ -84,52 +84,55 @@ public class ThymeleafComponentElement extends ComponentElement{
                         helper.attribute("editable", String.valueOf(this.editable2));
                     }
 
-                    if(StringUtils.isEmpty(dialog2)) {
+                    if (StringUtils.isEmpty(dialog2)) {
                         dialog2 = resolveDialog();
                     }
                     helper.attribute("dialog", dialog2);
 
-                    String label = StringUtils.defaultIfEmpty(componentDefinition2.getTitle(),componentDefinition2.getName());
+                    final String label = StringUtils.defaultIfEmpty(componentDefinition2.getTitle(),
+                            componentDefinition2.getName());
                     helper.attribute("label", messages.getWithDefault(label, label));
 
-                    if(StringUtils.isNotEmpty(componentDefinition2.getDescription())){
+                    if (StringUtils.isNotEmpty(componentDefinition2.getDescription())) {
                         helper.attribute("description", componentDefinition2.getDescription());
                     }
 
                 }
             }
-        } catch (Exception e) {
-            throw new TemplateProcessingException("Cant create comment",e);
+        } catch (final Exception e) {
+            throw new TemplateProcessingException("Cant create comment", e);
         }
 
         return out.toString();
     }
-    private boolean hasPermission(Node node) {
+
+    private boolean hasPermission(final Node node) {
         try {
             return node.getSession().hasPermission(node.getPath(), Session.ACTION_SET_PROPERTY);
-        } catch (RepositoryException e) {
+        } catch (final RepositoryException e) {
             log.error("Could not determine permission for node {}", node);
         }
         return false;
     }
 
     private Boolean resolveEditable() {
-        return editable2 != null ? editable2 : componentDefinition2 != null && componentDefinition2.getEditable() != null ? componentDefinition2.getEditable() : null;
+        return editable2 != null ? editable2 : componentDefinition2 != null
+                && componentDefinition2.getEditable() != null ? componentDefinition2.getEditable() : null;
     }
 
     private String resolveDialog() {
         if (StringUtils.isNotEmpty(this.dialog2)) {
             return this.dialog2;
         }
-        String dialog = componentDefinition2.getDialog();
+        final String dialog = componentDefinition2.getDialog();
         if (StringUtils.isNotEmpty(dialog)) {
             return dialog;
         }
         return null;
     }
 
-    public BlossomTemplateDefinition getTemplate(Node content) throws RegistrationException {
-        return (BlossomTemplateDefinition)templateDefinitionAssignment2.getAssignedTemplateDefinition(content);
+    public BlossomTemplateDefinition getTemplate(final Node content1) throws RegistrationException {
+        return (BlossomTemplateDefinition) templateDefinitionAssignment2.getAssignedTemplateDefinition(content1);
 
     }
 }
